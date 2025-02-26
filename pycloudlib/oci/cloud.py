@@ -6,7 +6,7 @@ import base64
 import json
 import os
 import re
-from typing import List, Optional, cast
+from typing import Dict, List, Optional, cast
 
 import oci
 
@@ -264,6 +264,7 @@ class OCI(BaseCloud):
         cluster_id: Optional[str] = None,
         subnet_id: Optional[str] = None,
         subnet_name: Optional[str] = None,
+        metadata: Dict = {},
         **kwargs,
     ) -> OciInstance:
         """Launch an instance.
@@ -274,6 +275,7 @@ class OCI(BaseCloud):
                 https://docs.cloud.oracle.com/en-us/iaas/Content/Compute/References/computeshapes.htm
             user_data: used by Cloud-Init to run custom scripts or
                 provide custom Cloud-Init configuration
+            subnet_id: string, OCID of subnet to use for instance.
             subnet_name: string, name of subnet to use for instance.
             retry_strategy: a retry strategy from oci.retry module
                 to apply for this operation
@@ -301,11 +303,11 @@ class OCI(BaseCloud):
                     self.availability_domain,
                     vcn_name=self.vcn_name,
                 )
-        metadata = {
+        default_metadata = {
             "ssh_authorized_keys": self.key_pair.public_key_content,
         }
         if user_data:
-            metadata["user_data"] = base64.b64encode(user_data.encode("utf8")).decode("ascii")
+            default_metadata["user_data"] = base64.b64encode(user_data.encode("utf8")).decode("ascii")
 
         instance_details = oci.core.models.LaunchInstanceDetails(  # noqa: E501
             display_name=self.tag,
@@ -315,7 +317,7 @@ class OCI(BaseCloud):
             shape=instance_type,
             subnet_id=subnet_id,
             image_id=image_id,
-            metadata=metadata,
+            metadata={**default_metadata, **metadata},
             compute_cluster_id=cluster_id,
             **kwargs,
         )
