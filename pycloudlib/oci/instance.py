@@ -302,8 +302,12 @@ class OciInstance(BaseInstance):
                 self.availability_domain,
                 private=use_private_subnet,
             )
+        subnet = self.network_client.get_subnet(subnet_id).data
+
+        # TODO check if there is an IPv6 addr on there too
         create_vnic_details = oci.core.models.CreateVnicDetails(  # noqa: E501
             subnet_id=subnet_id,
+            assign_ipv6_ip=(subnet.ipv6_cidr_blocks is not None) or True,
         )
         attach_vnic_details = oci.core.models.AttachVnicDetails(  # noqa: E501
             create_vnic_details=create_vnic_details,

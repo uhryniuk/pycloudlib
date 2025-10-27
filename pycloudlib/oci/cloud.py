@@ -7,6 +7,7 @@ import json
 import os
 import re
 from typing import Dict, List, Optional, cast
+from ipaddress import ip_address
 
 import oci
 
@@ -309,6 +310,17 @@ class OCI(BaseCloud):
                     self.availability_domain,
                     vcn_name=self.vcn_name,
                 )
+
+        # Configure vNIC for IPv4, IPv6 or dual stack.
+        subnet = self.network_client.get_subnet(subnet_id).data  # type: ignore
+        vnic_kwargs = {}
+        if "null" not in subnet.cidr_block:
+            vnic_kwargs["assign_public_ip"] = True
+        
+        if subnet.ipv6_cidr_block is not None:
+            vnic_kwargs["assign_ipv6_ip"] = True
+
+        print(f"Using vnic kwargs:{vnic_kwargs}")
         default_metadata = {
             "ssh_authorized_keys": self.key_pair.public_key_content,
         }
@@ -327,6 +339,11 @@ class OCI(BaseCloud):
             image_id=image_id,
             metadata={**default_metadata, **metadata},
             compute_cluster_id=cluster_id,
+            create_vnic_details=oci.core.models.CreateVnicDetails(
+                subnet_id=subnet_id,
+                display_name="primary-vnic",
+                **vnic_kwargs,
+            ),
             **kwargs,
         )
 
